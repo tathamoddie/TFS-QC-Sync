@@ -7,6 +7,22 @@ param (
 
 $ErrorActionPreference = "Stop"
 
+function Import-Excel($path, $sheetName)
+{
+    Write-Verbose "Reading $sheetName from Excel sheet $path"
+    $connection = New-Object System.Data.OleDb.OleDbConnection "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=`"$path`";Extended Properties=`"Excel 12.0 Xml;HDR=YES;IMEX=1`""
+    $connection.Open()
+    $query = "SELECT * FROM [$sheetName`$]"
+    $command = New-Object System.Data.OleDb.OleDbCommand @($query, $connection)
+    $adapter = New-Object System.Data.OleDb.OleDbDataAdapter
+    $adapter.SelectCommand = $command
+    $table = New-Object System.Data.DataTable $sheetName
+    $rowCount = $adapter.Fill($table)
+    Write-Verbose "Read $rowCount rows from Excel sheet"
+    $connection.Close()
+    $table
+}
+
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.WorkItemTracking.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
 
@@ -59,22 +75,6 @@ if (-not (Test-Path $QCExportPath)) {
     throw "We couldn't find or access the QC export file that is meant to be at $QCExportPath"
 }
 $QCExportPath = (Resolve-Path $QCExportPath).Path
-
-function Import-Excel($path, $sheetName)
-{
-    Write-Verbose "Reading $sheetName from Excel sheet $path"
-    $connection = New-Object System.Data.OleDb.OleDbConnection "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=`"$path`";Extended Properties=`"Excel 12.0 Xml;HDR=YES;IMEX=1`""
-    $connection.Open()
-    $query = "SELECT * FROM [$sheetName`$]"
-    $command = New-Object System.Data.OleDb.OleDbCommand @($query, $connection)
-    $adapter = New-Object System.Data.OleDb.OleDbDataAdapter
-    $adapter.SelectCommand = $command
-    $table = New-Object System.Data.DataTable $sheetName
-    $rowCount = $adapter.Fill($table)
-    Write-Verbose "Read $rowCount rows from Excel sheet"
-    $connection.Close()
-    $table
-}
 
 $DefectsInQC = Import-Excel $QCExportPath "Sheet1"
 
