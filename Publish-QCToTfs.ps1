@@ -24,20 +24,20 @@ if ($ProjectFound) {
     throw "We connected to the TFS collection successfully, but couldn't find a project named $ProjectName. Did you use the right collection URI ($CollectionUri), and spell the project name correctly?"
 }
 
-$QCWorkItemsInTfsQueryText = "
+$TfsWorkItemsQueryText = "
     SELECT Id
     FROM WorkItems
     WHERE [Team Project] = '$ProjectName'
     AND [Work Item Type] = 'Bug'
     AND Title contains 'QC'"
-$QCWorkItemsInTfsCount = $WorkItemStore.QueryCount($QCWorkItemsInTfsQueryText)
-Write-Verbose "$QCWorkItemsInTfsCount QC-related work items found in TFS"
+$TfsWorkItemsCount = $WorkItemStore.QueryCount($TfsWorkItemsQueryText)
+Write-Verbose "$TfsWorkItemsCount QC-related work items found in TFS"
 
 $CountProcessed = 0
-$QCWorkItemsInTfs = $WorkItemStore.Query($QCWorkItemsInTfsQueryText) |
+$TfsWorkItems = $WorkItemStore.Query($TfsWorkItemsQueryText) |
     %{
         $CountProcessed++
-        Write-Progress -Activity "Retrieving work items from TFS" -PercentComplete ($CountProcessed / $QCWorkItemsInTfsCount * 100)
+        Write-Progress -Activity "Retrieving work items from TFS" -PercentComplete ($CountProcessed / $TfsWorkItemsCount * 100)
 
         if (-not ($_.Title -match '^QC (?<QCId>\d+)')) {
             Write-Error "TFS Work Item $($_.Id) does not have a readable QC Id. Update the work item title to start with something like `"QC 123 - `", or remove the text `"QC`" from the title entirely. This work item will be ignored during processing."
@@ -79,3 +79,21 @@ function Import-Excel($path, $sheetName)
 $DefectsInQC = Import-Excel $QCExportPath "Sheet1"
 
 Write-Verbose "$($DefectsInQC.Length) defects found in QC export"
+
+$CountProcessed = 0
+$DefectsInQC | `
+    %{
+        $CountProcessed++
+        Write-Progress -Activity "Processing QC defects" -PercentComplete ($CountProcessed / $DefectsInQC.Length * 100)
+
+        $QCId = [int]$_["Defect ID"]
+        $TfsWorkItemsForThisQC = @($TfsWorkItems | Where-Object { $_.QCId -eq $QCId })
+
+        if ($TfsWorkItemsForThisQC.Length -eq 0) {
+            "QC $QCId is not tracked in TFS"
+        }
+        elseif ($TfsWorkItemsForThisQC.Length -gt 1) {
+            "QC $QCId is tracked in TFS multiple times"
+        }
+    }
+Write-Progress -Activity "Processing QC defects" -Complete
