@@ -39,7 +39,7 @@ $QCWorkItemsInTfs = $WorkItemStore.Query($QCWorkItemsInTfsQueryText) |
         Write-Progress -Activity "Retrieving work items from TFS" -PercentComplete ($CountProcessed / $QCWorkItemsInTfsCount * 100)
 
         if (-not ($_.Title -match '^QC (?<QCId>\d+)')) {
-            Write-Error "TFS Work Item $($_.Id) does not have a readable QC Id; ignoring"
+            Write-Error "TFS Work Item $($_.Id) does not have a readable QC Id. Update the work item title to start with something like `"QC 123 - `", or remove the text `"QC`" from the title entirely. This work item will be ignored during processing."
             return;
         }
         $QCId = [int]$matches["QCId"]
