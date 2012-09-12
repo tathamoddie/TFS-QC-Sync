@@ -55,45 +55,27 @@ $QCWorkItemsInTfs = $WorkItemStore.Query($QCWorkItemsInTfsQueryText) |
     Sort-Object -Property QCId
 Write-Progress -Activity "Retrieving work items from TFS" -Complete
 
-$QCWorkItemsInTfs
-
 if (-not (Test-Path $QCExportPath)) {
     throw "We couldn't find or access the QC export file that is meant to be at $QCExportPath"
 }
 $QCExportPath = (Resolve-Path $QCExportPath).Path
 
-function Get-ExcelHeaderRow($worksheet) {
-    Write-Verbose "Reading the Excel header row"
-    $columnIndex = 1
-    $lastColumnValue = $null
-    $columnValues = @()
-    do
-    {
-        $lastColumnValue = $worksheet.Cells.Item(1, $columnIndex).Value()
-        if ($lastColumnValue -ne $null) {
-            $columnValues += $lastColumnValue
-        }
-        $columnIndex++
-    }
-    until ($lastColumnValue -eq $null)
-    $columnValues
+function Import-Excel($path, $sheetName)
+{
+    Write-Verbose "Reading $sheetName from Excel sheet $path"
+    $connection = New-Object System.Data.OleDb.OleDbConnection "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=`"$path`";Extended Properties=`"Excel 12.0 Xml;HDR=YES;IMEX=1`""
+    $connection.Open()
+    $query = "SELECT * FROM [$sheetName`$]"
+    $command = New-Object System.Data.OleDb.OleDbCommand @($query, $connection)
+    $adapter = New-Object System.Data.OleDb.OleDbDataAdapter
+    $adapter.SelectCommand = $command
+    $table = New-Object System.Data.DataTable $sheetName
+    $rowCount = $adapter.Fill($table)
+    Write-Verbose "Read $rowCount rows from Excel sheet"
+    $connection.Close()
+    $table
 }
 
-function Get-ExcelDataRow($worksheet, $headers, $rowIndex) {
-    Write-Verbose "Reading Excel data row $rowIndex"
-    $data = @{}
-    for ($columnIndex = 0; $columnIndex -lt $headers.Length; $columnIndex++) {
-        $columnName = $headers[$columnIndex]
-        Write-Verbose "Reading ($rowIndex,$($columnIndex + 1)): $columnName"
-        $data[$columnName] = $worksheet.Cells.Item($rowIndex, $columnIndex + 1).Value()
-    }
-    New-Object PSObject -Property $data
-}
+$DefectsInQC = Import-Excel $QCExportPath "Sheet1"
 
-$Excel = New-Object -ComObject excel.application
-$QCWorkbook = $Excel.Workbooks.Open($QCExportPath)
-Write-Verbose "Opened the QC workbook in Excel"
-$QCWorksheet = $QCWorkbook.Worksheets.Item(1)
-
-$QCHeaderRow = Get-ExcelHeaderRow $QCWorksheet
-(Get-ExcelDataRow $QCWorksheet $QCHeaderRow 2).Status
+Write-Verbose "$($DefectsInQC.Length) defects found in QC export"
