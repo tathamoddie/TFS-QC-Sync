@@ -110,6 +110,36 @@ $DefectToTfsSeverity = @{
     "4-Low" = "4 - Low";
 }
 
+$QCStatusToTfsStateToNewTfsStateMapping = @{
+    "Assigned" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Closed" = @{
+        "New" = "Removed";
+        "Approved" = "Removed";
+        "Committed" = "Done";
+    };
+    "Fixed" = @{
+        "New" = "Removed";
+        "Approved" = "Removed";
+        "Committed" = "Done";
+    };
+    "New" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Open" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Retest" = @{
+        "New" = "Removed";
+        "Approved" = "Removed";
+        "Committed" = "Done";
+    };
+}
+
 $CountProcessed = 0
 $SyncIssuesFound = 0
 $TfsChanges = @()
@@ -156,11 +186,13 @@ $DefectsInQC | `
             $TfsChanges += $TfsWorkItem
         }
 
-        if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
+        $ExpectedState = $QCStatusToTfsStateToNewTfsStateMapping[$QCDefect.Status][$TfsWorkItem["State"]]
+        if (($ExpectedState -ne $null) -and
+            ($TfsWorkItem["State"] -ne $ExpectedState)) {
             $SyncIssuesFound++
-            "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["Severity"])' (should be '$ExpectedSeverity')"
+            "QC $QCId has status '$($QCDefect.Status)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["State"])' (should be '$ExpectedState')"
             $TfsWorkItem.Open()
-            $TfsWorkItem["Severity"] = $ExpectedSeverity
+            $TfsWorkItem["State"] = $ExpectedState
             $TfsChanges += $TfsWorkItem
         }
     }
