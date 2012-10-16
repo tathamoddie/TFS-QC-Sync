@@ -146,7 +146,16 @@ $DefectsInQC | `
         }
 
         $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
+
         $ExpectedSeverity = $DefectToTfsSeverity[$QCDefect.Severity]
+        if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
+            $SyncIssuesFound++
+            "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["Severity"])' (should be '$ExpectedSeverity')"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["Severity"] = $ExpectedSeverity
+            $TfsChanges += $TfsWorkItem
+        }
+
         if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
             $SyncIssuesFound++
             "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["Severity"])' (should be '$ExpectedSeverity')"
