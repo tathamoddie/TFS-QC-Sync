@@ -201,7 +201,12 @@ $DefectsInQC | `
             $TfsChanges += $TfsWorkItem
         }
 
-        $ExpectedState = $QCStatusToTfsStateToNewTfsStateMapping[$QCDefect.Status][$TfsWorkItem["State"]]
+        if ($QCStatusToTfsStateToNewTfsStateMapping.Contains($QCDefect.Status)) {
+            $ExpectedState = $QCStatusToTfsStateToNewTfsStateMapping[$QCDefect.Status][$TfsWorkItem["State"]]
+        } else {
+            $ExpectedState = $null
+            Write-Warning "QC $QCId has status has status '$($QCDefect.Status)' that we didn't know what to do with (relates to TFS $($TfsWorkItem.Id) which is $($TfsWorkItem["State"]))"
+        }
         if (($ExpectedState -ne $null) -and
             ($TfsWorkItem["State"] -ne $ExpectedState)) {
             $SyncIssuesFound++
