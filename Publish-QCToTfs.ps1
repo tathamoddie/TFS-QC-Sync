@@ -28,12 +28,21 @@ function Import-Excel($path, $sheetName)
 function New-BugInTfs($WorkItemType, $QCDefect)
 {
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
-    $WorkItem["Title"] = "QC $QCId - $($QCDefect.Summary)"
+    $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
     }
     $WorkItem
+}
+
+function Format-TfsWorkItemTitle($QCDefect)
+{
+    $Prefix = ''
+    if (-not [string]::IsNullOrWhiteSpace($QCPrefix)) {
+        $Prefix = "$($QCPrefix) "
+    }
+    "$($Prefix)QC $($QCDefect["Defect ID"]) - $($QCDefect.Summary)"
 }
 
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
@@ -191,6 +200,15 @@ $DefectsInQC | `
         }
 
         $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
+
+        $ExpectedTitle = Format-TfsWorkItemTitle $QCDefect
+        if ($TfsWorkItem["Title"] -ne $ExpectedTitle) {
+            $SyncIssuesFound++
+            "TFS $($TfsWorkItem.Id) has title '$($TfsWorkItem["Title"])' (should be '$ExpectedTitle')"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["Title"] = $ExpectedTitle
+            $TfsChanges += $TfsWorkItem
+        }
 
         $ExpectedSeverity = $DefectToTfsSeverity[$QCDefect.Severity]
         if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
