@@ -2,7 +2,9 @@
 param (
     [parameter(Mandatory=$true)] [Uri]$CollectionUri,
     [parameter(Mandatory=$true)] [string]$ProjectName,
-    [parameter(Mandatory=$true)] [string]$QCExportPath
+    [parameter(Mandatory=$true)] [string]$QCExportPath,
+    [string]$QCPrefix,
+    [switch] $Fix = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,8 +57,12 @@ $TfsWorkItems = $WorkItemStore.Query($TfsWorkItemsQueryText) |
         $CountProcessed++
         Write-Progress -Activity "Retrieving work items from TFS" -PercentComplete ($CountProcessed / $TfsWorkItemsCount * 100)
 
-        if (-not ($_.Title -match '^QC (?<QCId>\d+)')) {
-            Write-Error "TFS Work Item $($_.Id) does not have a readable QC Id. Update the work item title to start with something like `"QC 123 - `", or remove the text `"QC`" from the title entirely. This work item will be ignored during processing."
+        if (-not ($_.Title -match '^(?<QCPrefix>.*?)\s*QC\s*(?<QCId>\d+)')) {
+            Write-Warning "TFS Work Item $($_.Id) does not have a readable QC Id. The current title is `"$($_.Title)`". Update the work item title to start with something like `"QC 123 - `", or remove the text `"QC`" from the title entirely. This work item will be ignored during processing."
+            return;
+        }
+        if ($QCPrefix -ne $matches["QCPrefix"]) {
+            Write-Debug "Ignoring TFS Work Item $($_.Id) because prefix doesn't match"
             return;
         }
         $QCId = [int]$matches["QCId"]
@@ -86,14 +92,25 @@ $DefectsInQC | `
         $CountProcessed++
         Write-Progress -Activity "Processing QC defects" -PercentComplete ($CountProcessed / $DefectsInQC.Length * 100)
 
-        $QCId = [int]$_["Defect ID"]
-        $TfsWorkItemsForThisQC = @($TfsWorkItems | Where-Object { $_.QCId -eq $QCId })
+        $QCDefect = $_
+        $QCId = [int]$QCDefect["Defect ID"]
+        $TfsWorkItemsForThisQC = @($TfsWorkItems | ` Where-Object { $_.QCId -eq $QCId })
+
+        $OpenTfsWorkItemsForThisQC = @($TfsWorkItemsForThisQC | ` Where-Object {
+            $_.TfsState -ne 'Removed' -and
+            $_.TfsState -ne 'Done'
+        })
 
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
-            "QC $QCId is not tracked in TFS"
+            "QC $QCId is not tracked in TFS at all"
+            $Title = "QC $QCId - $($QCDefect.Summary)"
+            if ($Fix -eq $true) {
+                Write-Verbose "$Title"
+            }
         }
-        elseif ($TfsWorkItemsForThisQC.Length -gt 1) {
-            "QC $QCId is tracked in TFS multiple times"
+        elseif ($OpenTfsWorkItemsForThisQC.Length -gt 1) {
+            $DuplicateTfsIds = $OpenTfsWorkItemsForThisQC | Select-Object -ExpandProperty TfsId
+            "QC $QCId is tracked by multiple open TFS work items: $DuplicateTfsIds"
         }
     }
 Write-Progress -Activity "Processing QC defects" -Complete
