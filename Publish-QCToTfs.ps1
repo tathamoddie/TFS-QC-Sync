@@ -115,6 +115,22 @@ $QCStatusToTfsStateToNewTfsStateMapping = @{
         "Done" = "Committed";
         "Removed" = "Approved";
     };
+    "New" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Open" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Fix" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
+    "Analyse" = @{
+        "Done" = "Committed";
+        "Removed" = "Approved";
+    };
     "Closed" = @{
         "New" = "Removed";
         "Approved" = "Removed";
@@ -125,18 +141,17 @@ $QCStatusToTfsStateToNewTfsStateMapping = @{
         "Approved" = "Removed";
         "Committed" = "Done";
     };
-    "New" = @{
-        "Done" = "Committed";
-        "Removed" = "Approved";
-    };
-    "Open" = @{
-        "Done" = "Committed";
-        "Removed" = "Approved";
-    };
     "Retest" = @{
         "New" = "Removed";
         "Approved" = "Removed";
         "Committed" = "Done";
+    };
+    "Deploy" = @{
+        "New" = "Removed";
+        "Approved" = "Removed";
+        "Committed" = "Done";
+    };
+    "Deferred" = @{
     };
 }
 
