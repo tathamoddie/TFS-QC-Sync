@@ -25,6 +25,17 @@ function Import-Excel($path, $sheetName)
     $table
 }
 
+function New-BugInTfs($WorkItemType, $QCDefect)
+{
+    $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
+    $WorkItem["Title"] = "QC $QCId - $($QCDefect.Summary)"
+    if (-not $WorkItem.IsValid()) {
+        $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
+        Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
+    }
+    $WorkItem
+}
+
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.WorkItemTracking.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
 
@@ -35,11 +46,16 @@ Write-Verbose "Successfully connected and authenticated to TFS"
 
 $WorkItemStore = $Collection.GetService([Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItemStore])
 
-$ProjectFound = @($WorkItemStore.Projects | Where-Object { $_.Name -eq $ProjectName }).Length -eq 1
-if ($ProjectFound) {
+$TfsProject = @($WorkItemStore.Projects | Where-Object { $_.Name -eq $ProjectName })[0]
+if ($TfsProject -ne $null) {
     Write-Verbose "Found a team project named $ProjectName"
 } else {
     throw "We connected to the TFS collection successfully, but couldn't find a project named $ProjectName. Did you use the right collection URI ($CollectionUri), and spell the project name correctly?"
+}
+
+$BugWorkItemType = $TfsProject.WorkItemTypes['Bug']
+if ($BugWorkItemType -eq $null) {
+    throw "Couldn't find the work item type definition for bugs"
 }
 
 $TfsWorkItemsQueryText = "
@@ -88,6 +104,7 @@ Write-Verbose "$($DefectsInQC.Length) defects found in QC export"
 
 $CountProcessed = 0
 $SyncIssuesFound = 0
+$TfsChanges = @()
 $DefectsInQC | `
     %{
         $CountProcessed++
@@ -105,9 +122,8 @@ $DefectsInQC | `
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
             $SyncIssuesFound++
             "QC $QCId is not tracked in TFS at all"
-            $Title = "QC $QCId - $($QCDefect.Summary)"
             if ($Fix -eq $true) {
-                Write-Verbose "$Title"
+                $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
             }
         }
         elseif ($OpenTfsWorkItemsForThisQC.Length -gt 1) {
@@ -119,3 +135,14 @@ $DefectsInQC | `
 Write-Progress -Activity "Processing QC defects" -Complete
 
 "Found $SyncIssuesFound sync issues across $($DefectsInQC.Length) supplied QC defects and $TfsWorkItemsCount QC-related TFS work items"
+
+Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -PercentComplete 0
+
+$SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
+$PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id
+"Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
+if ($SaveErrors.Length -ne 0) {
+    Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
+}
+
+Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -Complete
