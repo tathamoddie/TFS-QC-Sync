@@ -118,4 +118,4 @@ $DefectsInQC | `
     }
 Write-Progress -Activity "Processing QC defects" -Complete
 
-"Found $SyncIssuesFound sync issues across $($DefectsInQC.Length) supplied QC issues and $TfsWorkItemsCount QC-related TFS work items"
+"Found $SyncIssuesFound sync issues across $($DefectsInQC.Length) supplied QC defects and $TfsWorkItemsCount QC-related TFS work items"
