@@ -128,9 +128,11 @@ $DefectsInQC | `
         })
 
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
-            $SyncIssuesFound++
-            "QC $QCId is not tracked in TFS at all"
-            $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
+            if (@('Assigned', 'New', 'Open').Contains($QCDefect.Status)) {
+                $SyncIssuesFound++
+                "QC $QCId is $($QCDefect.Status) but not tracked in TFS at all"
+                $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
+            }
             return
         }
         elseif ($OpenTfsWorkItemsForThisQC.Length -gt 1) {
