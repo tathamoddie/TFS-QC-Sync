@@ -241,9 +241,9 @@ Write-Progress -Activity "Processing QC defects" -Complete
 Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -PercentComplete 0
 
 if ($Fix -eq $true) {
-    $TfsChanges = $TfsChanges | `
+    $TfsChanges = @($TfsChanges | `
         Group-Object -Property Id | `
-        %{ $_.Group[0] }
+        %{ $_.Group[0] })
     $SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
     $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id | Sort-Object
     "Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
