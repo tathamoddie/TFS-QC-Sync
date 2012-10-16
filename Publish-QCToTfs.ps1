@@ -87,6 +87,7 @@ $DefectsInQC = Import-Excel $QCExportPath "Sheet1"
 Write-Verbose "$($DefectsInQC.Length) defects found in QC export"
 
 $CountProcessed = 0
+$SyncIssuesFound = 0
 $DefectsInQC | `
     %{
         $CountProcessed++
@@ -102,6 +103,7 @@ $DefectsInQC | `
         })
 
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
+            $SyncIssuesFound++
             "QC $QCId is not tracked in TFS at all"
             $Title = "QC $QCId - $($QCDefect.Summary)"
             if ($Fix -eq $true) {
@@ -109,8 +111,11 @@ $DefectsInQC | `
             }
         }
         elseif ($OpenTfsWorkItemsForThisQC.Length -gt 1) {
+            $SyncIssuesFound++
             $DuplicateTfsIds = $OpenTfsWorkItemsForThisQC | Select-Object -ExpandProperty TfsId
             "QC $QCId is tracked by multiple open TFS work items: $DuplicateTfsIds"
         }
     }
 Write-Progress -Activity "Processing QC defects" -Complete
+
+"Found $SyncIssuesFound sync issues across $($DefectsInQC.Length) supplied QC issues and $TfsWorkItemsCount QC-related TFS work items"
