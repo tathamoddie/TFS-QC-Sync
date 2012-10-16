@@ -103,6 +103,13 @@ $DefectsInQC = Import-Excel $QCExportPath "Sheet1"
 
 Write-Verbose "$($DefectsInQC.Length) defects found in QC export"
 
+$DefectToTfsSeverity = @{
+    "1-Critical" = "1 - Critical";
+    "2-High" = "2 - High";
+    "3-Medium" = "3 - Medium";
+    "4-Low" = "4 - Low";
+}
+
 $CountProcessed = 0
 $SyncIssuesFound = 0
 $TfsChanges = @()
@@ -137,9 +144,13 @@ $DefectsInQC | `
         }
 
         $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
-        if ($TfsWorkItem["Severity"][0] -ne $QCDefect.Severity[0]) {
+        $ExpectedSeverity = $DefectToTfsSeverity[$QCDefect.Severity]
+        if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
             $SyncIssuesFound++
-            "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has $($TfsWorkItem["Severity"])"
+            "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["Severity"])' (should be '$ExpectedSeverity')"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["Severity"] = $ExpectedSeverity
+            $TfsChanges += $TfsWorkItem
         }
     }
 Write-Progress -Activity "Processing QC defects" -Complete
@@ -150,7 +161,7 @@ Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -Perc
 
 if ($Fix -eq $true) {
     $SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
-    $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id
+    $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id | Sort-Object
     "Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
     if ($SaveErrors.Length -ne 0) {
         Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
