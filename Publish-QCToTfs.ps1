@@ -88,6 +88,7 @@ $TfsWorkItems = $WorkItemStore.Query($TfsWorkItemsQueryText) |
             "TfsId" = $_.Id;
             "TfsState" = $_.State;
             "TfsAssignedTo" = $_["Assigned To"];
+            "TfsWorkItem" = $_;
         }
     } |
     Sort-Object -Property QCId
@@ -122,14 +123,23 @@ $DefectsInQC | `
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
             $SyncIssuesFound++
             "QC $QCId is not tracked in TFS at all"
-            if ($Fix -eq $true) {
-                $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
-            }
+            $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
+            return
         }
         elseif ($OpenTfsWorkItemsForThisQC.Length -gt 1) {
             $SyncIssuesFound++
             $DuplicateTfsIds = $OpenTfsWorkItemsForThisQC | Select-Object -ExpandProperty TfsId
             "QC $QCId is tracked by multiple open TFS work items: $DuplicateTfsIds"
+            return
+        }
+        elseif ($OpenTfsWorkItemsForThisQC.Length -eq 0) {
+            return
+        }
+
+        $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
+        if ($TfsWorkItem["Severity"][0] -ne $QCDefect.Severity[0]) {
+            $SyncIssuesFound++
+            "QC $QCId has severity '$($QCDefect.Severity)', but TFS $($TfsWorkItem.Id) has $($TfsWorkItem["Severity"])"
         }
     }
 Write-Progress -Activity "Processing QC defects" -Complete
@@ -138,11 +148,16 @@ Write-Progress -Activity "Processing QC defects" -Complete
 
 Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -PercentComplete 0
 
-$SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
-$PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id
-"Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
-if ($SaveErrors.Length -ne 0) {
-    Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
+if ($Fix -eq $true) {
+    $SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
+    $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id
+    "Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
+    if ($SaveErrors.Length -ne 0) {
+        Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
+    }
+}
+else {
+    "Skipping $($TfsChanges.Length) changes to TFS because -Fix switch was not supplied"
 }
 
 Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -Complete
