@@ -3,7 +3,7 @@ param (
     [parameter(Mandatory=$true)] [Uri]$CollectionUri,
     [parameter(Mandatory=$true)] [string]$ProjectName,
     [parameter(Mandatory=$true)] [string]$QCExportPath,
-    [string]$QCPrefix,
+    [string] $QCPrefix,
     [switch] $Fix = $false
 )
 
