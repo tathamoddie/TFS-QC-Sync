@@ -179,6 +179,8 @@ $DefectsInQC | `
         $QCId = [int]$QCDefect["Defect ID"]
         $TfsWorkItemsForThisQC = @($TfsWorkItems | ` Where-Object { $_.QCId -eq $QCId })
 
+        Write-Verbose "Processing QC $QCId which has $($TfsWorkItemsForThisQC.Length) TFS work items: $($TfsWorkItemsForThisQC | Select-Object -ExpandProperty TfsId)"
+
         $OpenTfsWorkItemsForThisQC = @($TfsWorkItemsForThisQC | ` Where-Object {
             $_.TfsState -ne 'Removed' -and
             $_.TfsState -ne 'Done'
