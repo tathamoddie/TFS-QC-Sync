@@ -30,6 +30,7 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
     $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
     $WorkItem["Severity"] = $DefectToTfsSeverity[$QCDefect.Severity]
+    $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = $QCDefect.Priority[0]
     $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communciation in QC."
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
@@ -219,6 +220,17 @@ $DefectsInQC | `
             $TfsWorkItem.Open()
             $TfsWorkItem["Severity"] = $ExpectedSeverity
             $TfsChanges += $TfsWorkItem
+        }
+
+        if ($QCDefect.Priority -ne [System.DBNull]::Value) {
+            $ExpectedBusinessValue = [int]::Parse($QCDefect.Priority[0])
+            if ($TfsWorkItem["Microsoft.VSTS.Common.BusinessValue"] -ne $ExpectedBusinessValue) {
+                $SyncIssuesFound++
+                "QC $QCId has priority '$($QCDefect.Priority)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["Microsoft.VSTS.Common.BusinessValue"])' (should be '$ExpectedBusinessValue')"
+                $TfsWorkItem.Open()
+                $TfsWorkItem["Microsoft.VSTS.Common.BusinessValue"] = $ExpectedBusinessValue
+                $TfsChanges += $TfsWorkItem
+            }
         }
 
         if ($QCStatusToTfsStateToNewTfsStateMapping.Contains($QCDefect.Status)) {
