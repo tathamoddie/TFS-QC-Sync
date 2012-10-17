@@ -249,7 +249,7 @@ if ($Fix -eq $true) {
 
     $SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
     $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id | Sort-Object
-    "Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
+    "Published $($TfsChanges.Length - $SaveErrors.Length) work items to TFS $PublishedTfsIds"
     if ($SaveErrors.Length -ne 0) {
         Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
     }
