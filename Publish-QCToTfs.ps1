@@ -29,6 +29,8 @@ function New-BugInTfs($WorkItemType, $QCDefect)
 {
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
     $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
+    $WorkItem["Severity"] = $DefectToTfsSeverity[$QCDefect.Severity]
+    $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communciation in QC."
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
@@ -182,9 +184,9 @@ $DefectsInQC | `
         })
 
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
-            if (@('Assigned', 'New', 'Open').Contains($QCDefect.Status)) {
+            if (@('Assigned', 'New', 'Open', 'Fix', 'Analyse').Contains($QCDefect.Status)) {
                 $SyncIssuesFound++
-                "QC $QCId is $($QCDefect.Status) but not tracked in TFS at all"
+                "QC $QCId is $($QCDefect.Status) but not tracked in TFS at all (should be created)"
                 $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
             }
             return
@@ -242,8 +244,9 @@ Write-Progress -Activity "Publishing $($TfsChanges.Length) changes to TFS" -Perc
 
 if ($Fix -eq $true) {
     $TfsChanges = @($TfsChanges | `
-        Group-Object -Property Id | `
+        Group-Object -Property Title | `
         %{ $_.Group[0] })
+
     $SaveErrors = $WorkItemStore.BatchSave($TfsChanges)
     $PublishedTfsIds = $TfsChanges | Select-Object -ExpandProperty Id | Sort-Object
     "Published $($TfsChanges.Length - $SaveErrors.Length) changes to TFS $PublishedTfsIds"
