@@ -92,7 +92,7 @@ $TfsWorkItems = $WorkItemStore.Query($TfsWorkItemsQueryText) |
             return;
         }
         if ($QCPrefix -ne $matches["QCPrefix"]) {
-            Write-Debug "Ignoring TFS Work Item $($_.Id) because prefix doesn't match"
+            Write-Verbose "Ignoring TFS Work Item $($_.Id) because prefix doesn't match"
             return;
         }
         $QCId = [int]$matches["QCId"]
@@ -188,6 +188,7 @@ $DefectsInQC | `
             $_.TfsState -ne 'Done'
         })
 
+        Write-Debug 'Assessing item counts'
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
             if (@('Assigned', 'New', 'Open', 'Fix', 'Analyse').Contains($QCDefect.Status)) {
                 $SyncIssuesFound++
@@ -208,7 +209,10 @@ $DefectsInQC | `
 
         $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
 
+        Write-Debug 'Checking title'
         $ExpectedTitle = Format-TfsWorkItemTitle $QCDefect
+        Write-Debug "Expected title is $ExpectedTitle"
+        Write-Debug "Current title is $($TfsWorkItem["Title"])"
         if ($TfsWorkItem["Title"] -ne $ExpectedTitle) {
             $SyncIssuesFound++
             "TFS $($TfsWorkItem.Id) has title '$($TfsWorkItem["Title"])' (should be '$ExpectedTitle')"
@@ -217,6 +221,7 @@ $DefectsInQC | `
             $TfsChanges += $TfsWorkItem
         }
 
+        Write-Debug 'Checking severity'
         $ExpectedSeverity = $DefectToTfsSeverity[$QCDefect.Severity]
         if ($TfsWorkItem["Severity"] -ne $ExpectedSeverity) {
             $SyncIssuesFound++
@@ -226,6 +231,7 @@ $DefectsInQC | `
             $TfsChanges += $TfsWorkItem
         }
 
+        Write-Debug 'Checking priority'
         if ($QCDefect.Priority -ne [System.DBNull]::Value) {
             $ExpectedBusinessValue = [int]::Parse($QCDefect.Priority[0])
             if ($TfsWorkItem["Microsoft.VSTS.Common.BusinessValue"] -ne $ExpectedBusinessValue) {
@@ -237,6 +243,7 @@ $DefectsInQC | `
             }
         }
 
+        Write-Debug 'Checking state'
         if ($QCStatusToTfsStateToNewTfsStateMapping.Contains($QCDefect.Status)) {
             $ExpectedState = $QCStatusToTfsStateToNewTfsStateMapping[$QCDefect.Status][$TfsWorkItem["State"]]
         } else {
