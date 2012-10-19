@@ -203,11 +203,13 @@ $DefectsInQC | `
             "QC $QCId is tracked by multiple open TFS work items: $DuplicateTfsIds"
             return
         }
-        elseif ($OpenTfsWorkItemsForThisQC.Length -eq 0) {
-            return
-        }
 
-        $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
+        if ($OpenTfsWorkItemsForThisQC.Length -eq 1) {
+            $TfsWorkItem = $OpenTfsWorkItemsForThisQC[0].TfsWorkItem
+        }
+        else {
+            $TfsWorkItem = ($TfsWorkItemsForThisQC | Select-Object -Last 1).TfsWorkItem
+        }
 
         Write-Debug 'Checking title'
         $ExpectedTitle = Format-TfsWorkItemTitle $QCDefect
