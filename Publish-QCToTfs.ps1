@@ -30,7 +30,9 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
     $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
     $WorkItem["Severity"] = $DefectToTfsSeverity[$QCDefect.Severity]
-    $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = $QCDefect.Priority[0]
+    if ($QCDefect.Priority -ne [System.DBNull]::Value) {
+        $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = [int]::Parse($QCDefect.Priority[0])
+    }
     $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communciation in QC."
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
