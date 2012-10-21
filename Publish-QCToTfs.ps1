@@ -127,23 +127,23 @@ $DefectToTfsSeverity = @{
 $QCStatusToTfsStateToNewTfsStateMapping = @{
     "Assigned" = @{
         "Done" = "Committed";
-        "Removed" = "Approved";
+        "Removed" = "New";
     };
     "New" = @{
         "Done" = "Committed";
-        "Removed" = "Approved";
+        "Removed" = "New";
     };
     "Open" = @{
         "Done" = "Committed";
-        "Removed" = "Approved";
+        "Removed" = "New";
     };
     "Fix" = @{
         "Done" = "Committed";
-        "Removed" = "Approved";
+        "Removed" = "New";
     };
     "Analyse" = @{
         "Done" = "Committed";
-        "Removed" = "Approved";
+        "Removed" = "New";
     };
     "Closed" = @{
         "New" = "Removed";
