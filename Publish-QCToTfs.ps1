@@ -33,7 +33,7 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     if ($QCDefect.Priority -ne [System.DBNull]::Value) {
         $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = [int]::Parse($QCDefect.Priority[0])
     }
-    $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communciation in QC."
+    $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communication in QC."
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | Select-Object -ExpandProperty Name
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
