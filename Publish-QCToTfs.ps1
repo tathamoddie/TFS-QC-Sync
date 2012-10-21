@@ -3,6 +3,7 @@ param (
     [parameter(Mandatory=$true)] [Uri]$CollectionUri,
     [parameter(Mandatory=$true)] [string]$ProjectName,
     [parameter(Mandatory=$true)] [string]$QCExportPath,
+    [parameter(Mandatory=$true)] $IterationMapping,
     [string] $QCPrefix,
     [switch] $Fix = $false
 )
@@ -243,6 +244,17 @@ $DefectsInQC | `
                 $TfsWorkItem["Microsoft.VSTS.Common.BusinessValue"] = $ExpectedBusinessValue
                 $TfsChanges += $TfsWorkItem
             }
+        }
+
+        Write-Debug 'Checking iteration path'
+        $ExpectedIterationPath = $IterationMapping[$QCDefect["Detected in Release"]]
+        if ((-not $TfsWorkItem["Iteration Path"].Contains("\")) -and
+            ($TfsWorkItem["Iteration Path"] -ne $ExpectedIterationPath)) {
+            $SyncIssuesFound++
+            "QC $QCId was detected in release '$($QCDefect["Detected in Release"])', but TFS $($TfsWorkItem.Id) is in iteration path '$($TfsWorkItem["Iteration Path"])' (should be '$ExpectedIterationPath')"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["Iteration Path"] = $ExpectedIterationPath
+            $TfsChanges += $TfsWorkItem
         }
 
         Write-Debug 'Checking state'
