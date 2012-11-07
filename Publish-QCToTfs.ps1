@@ -199,7 +199,7 @@ $DefectsInQC | `
 
         Write-Debug 'Assessing item counts'
         if ($TfsWorkItemsForThisQC.Length -eq 0) {
-            if (@('Assigned', 'New', 'Open', 'Fix', 'Analyse').Contains($QCDefect.Status)) {
+            if (@('Assigned', 'New', 'Open', 'Fix', 'Analyse') -contains $QCDefect.Status) {
                 $SyncIssuesFound++
                 "QC $QCId is $($QCDefect.Status) but not tracked in TFS at all (should be created)"
                 $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
