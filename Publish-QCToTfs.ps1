@@ -203,6 +203,8 @@ $DefectsInQC | `
                 $SyncIssuesFound++
                 "QC $QCId is $($QCDefect.Status) but not tracked in TFS at all (should be created)"
                 $TfsChanges += New-BugInTfs $BugWorkItemType $QCDefect
+            } else {
+                Write-Verbose "QC $QCId is not in TFS, but doesn't need to be because state is $($QCDefect.Status)"
             }
             return
         }
