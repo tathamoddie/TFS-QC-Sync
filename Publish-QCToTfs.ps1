@@ -48,7 +48,11 @@ function Format-TfsWorkItemTitle($QCDefect)
     if (-not [string]::IsNullOrWhiteSpace($QCPrefix)) {
         $Prefix = "$($QCPrefix) "
     }
-    "$($Prefix)QC $($QCDefect["Defect ID"]) - $($QCDefect.Summary)"
+    $QCTitle = $QCDefect.Summary
+    if ($QCTitle.Length -gt 150) {
+        $QCTitle = "$($QCTitle.Substring(0, 149))…"
+    }
+    "$($Prefix)QC $($QCDefect["Defect ID"]) - $($QCTitle)"
 }
 
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
