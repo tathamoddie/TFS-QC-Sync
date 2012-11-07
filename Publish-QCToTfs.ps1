@@ -146,6 +146,10 @@ $QCStatusToTfsStateToNewTfsStateMapping = @{
         "Done" = "Committed";
         "Removed" = "New";
     };
+    "Reopened" = @{
+        "Done" = "Committed";
+        "Removed" = "New";
+    };
     "Closed" = @{
         "New" = "Removed";
         "Approved" = "Removed";
