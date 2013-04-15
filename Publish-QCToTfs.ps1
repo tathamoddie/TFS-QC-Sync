@@ -11,6 +11,8 @@ param (
 $ErrorActionPreference = "Stop"
 
 $DescriptionField = "Microsoft.VSTS.TCM.ReproSteps"
+$CommentsField = "Microsoft.VSTS.Common.AcceptanceCriteria"
+
 function Import-Excel($path, $sheetName)
 {
     Write-Verbose "Reading $sheetName from Excel sheet $path"
@@ -36,6 +38,7 @@ function New-BugInTfs($WorkItemType, $QCDefect)
         $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = [int]::Parse($QCDefect.Priority[0])
     }
     $WorkItem["$DescriptionField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Description
+    $WorkItem["$CommentsField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | %{ "$($_.Name) is $($_.Status) and value is `"$($_.Value)`"" }
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
@@ -301,6 +304,19 @@ $DefectsInQC | `
             "TFS $($TfsWorkItem.Id) has out of date description"
             $TfsWorkItem.Open()
             $TfsWorkItem["$DescriptionField"] = $ExpectedDescription
+            $TfsChanges += $TfsWorkItem
+        }
+
+        Write-Debug 'Checking comments'
+        $ExpectedComments = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
+        $ActualComments = $TfsWorkItem["$CommentsField"]
+        Write-Debug "Expected comments is $ExpectedComments"
+        Write-Debug "Current comments is $ActualComments"
+        if ($ActualComments -ne $ExpectedComments) {
+            $SyncIssuesFound++
+            "TFS $($TfsWorkItem.Id) has out of date comments"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["$CommentsField"] = $ExpectedComments
             $TfsChanges += $TfsWorkItem
         }
     }
