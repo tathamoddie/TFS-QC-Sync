@@ -34,6 +34,7 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
     $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
     $WorkItem["Severity"] = $DefectToTfsSeverity[$QCDefect.Severity]
+    $WorkItem["Iteration Path"] = $IterationMapping[$QCDefect["Detected in Release"]]
     if ($QCDefect.Priority -ne [System.DBNull]::Value) {
         $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = [int]::Parse($QCDefect.Priority[0])
     }
