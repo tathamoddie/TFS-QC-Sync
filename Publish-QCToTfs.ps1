@@ -12,6 +12,7 @@ $ErrorActionPreference = "Stop"
 
 $DescriptionField = "Microsoft.VSTS.TCM.ReproSteps"
 $CommentsField = "Microsoft.VSTS.Common.AcceptanceCriteria"
+$SystemInfoField = "Microsoft.VSTS.TCM.SystemInfo"
 
 function Import-Excel($path, $sheetName)
 {
@@ -40,6 +41,7 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     }
     $WorkItem["$DescriptionField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Description
     $WorkItem["$CommentsField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
+    $WorkItem["$SystemInfoField"] = Format-TfsSystemInfo $QCDefect
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | %{ "$($_.Name) is $($_.Status) and value is `"$($_.Value)`"" }
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
@@ -65,6 +67,11 @@ function Format-TfsWorkItemTextAsHtml($Text)
     $Text -replace "<", "&lt;" `
           -replace ">", "&gt;" `
           -replace "`n", "<br>"
+}
+
+function Format-TfsSystemInfo($QCDefect)
+{
+    Format-TfsWorkItemTextAsHtml "QC Assignee: $($QCDefect["Assignee Full Name"])`nDetected By: $($QCDefect["Detected by Full Name"])`nDetected On: $($QCDefect["Detected on Date"])`n"
 }
 
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
@@ -307,7 +314,7 @@ $DefectsInQC | `
             $TfsWorkItem["$DescriptionField"] = $ExpectedDescription
             $TfsChanges += $TfsWorkItem
         }
-
+        
         Write-Debug 'Checking comments'
         $ExpectedComments = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
         $ActualComments = $TfsWorkItem["$CommentsField"]
@@ -318,6 +325,20 @@ $DefectsInQC | `
             "TFS $($TfsWorkItem.Id) has out of date comments"
             $TfsWorkItem.Open()
             $TfsWorkItem["$CommentsField"] = $ExpectedComments
+            $TfsChanges += $TfsWorkItem
+        }
+        
+        Write-Debug 'Checking system info'
+        
+        $ExpectedSystemInfo = Format-TfsSystemInfo $QCDefect
+        $ActualSystemInfo = $TfsWorkItem["$SystemInfoField"]
+        Write-Debug "Expected system info is $ExpectedSystemInfo"
+        Write-Debug "Current system info is $ActualSystemInfo"
+        if ($ActualSystemInfo -ne $ExpectedSystemInfo) {
+            $SyncIssuesFound++
+            "TFS $($TfsWorkItem.Id) has out of date system info"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["$SystemInfoField"] = $ExpectedSystemInfo
             $TfsChanges += $TfsWorkItem
         }
     }
