@@ -10,6 +10,9 @@ param (
 
 $ErrorActionPreference = "Stop"
 
+$DescriptionField = "Microsoft.VSTS.TCM.ReproSteps"
+$CommentsField = "Microsoft.VSTS.Common.AcceptanceCriteria"
+
 function Import-Excel($path, $sheetName)
 {
     Write-Verbose "Reading $sheetName from Excel sheet $path"
@@ -34,7 +37,8 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     if ($QCDefect.Priority -ne [System.DBNull]::Value) {
         $WorkItem["Microsoft.VSTS.Common.BusinessValue"] = [int]::Parse($QCDefect.Priority[0])
     }
-    $WorkItem["Microsoft.VSTS.TCM.ReproSteps"] = "Do not leave any commentary here.`n`nThis is just a pointer to QC.`n`nKeep all communication in QC."
+    $WorkItem["$DescriptionField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Description
+    $WorkItem["$CommentsField"] = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
     if (-not $WorkItem.IsValid()) {
         $InvalidFieldNames = $WorkItem.Fields | Where-Object { -not $_.IsValid } | %{ "$($_.Name) is $($_.Status) and value is `"$($_.Value)`"" }
         Write-Error "The newly created TFS work item was not valid for saving. Invalid fields were: $InvalidFieldNames" -ErrorAction Continue
@@ -53,6 +57,13 @@ function Format-TfsWorkItemTitle($QCDefect)
         $QCTitle = "$($QCTitle.Substring(0, 149))…"
     }
     "$($Prefix)QC $($QCDefect["Defect ID"]) - $($QCTitle)"
+}
+
+function Format-TfsWorkItemTextAsHtml($Text)
+{
+    $Text -replace "<", "&lt;" `
+          -replace ">", "&gt;" `
+          -replace "`n", "<br>"
 }
 
 Add-Type -AssemblyName 'Microsoft.TeamFoundation.Client, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
@@ -280,6 +291,32 @@ $DefectsInQC | `
             "QC $QCId has status '$($QCDefect.Status)', but TFS $($TfsWorkItem.Id) has '$($TfsWorkItem["State"])' (should be '$ExpectedState')"
             $TfsWorkItem.Open()
             $TfsWorkItem["State"] = $ExpectedState
+            $TfsChanges += $TfsWorkItem
+        }
+
+        Write-Debug 'Checking description'
+        $ExpectedDescription = Format-TfsWorkItemTextAsHtml $QCDefect.Description
+        $ActualDescription = $TfsWorkItem["$DescriptionField"]
+        Write-Debug "Expected description is $ExpectedDescription"
+        Write-Debug "Current description is $ActualDescription"
+        if ($ActualDescription -ne $ExpectedDescription) {
+            $SyncIssuesFound++
+            "TFS $($TfsWorkItem.Id) has out of date description"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["$DescriptionField"] = $ExpectedDescription
+            $TfsChanges += $TfsWorkItem
+        }
+
+        Write-Debug 'Checking comments'
+        $ExpectedComments = Format-TfsWorkItemTextAsHtml $QCDefect.Comments
+        $ActualComments = $TfsWorkItem["$CommentsField"]
+        Write-Debug "Expected comments is $ExpectedComments"
+        Write-Debug "Current comments is $ActualComments"
+        if ($ActualComments -ne $ExpectedComments) {
+            $SyncIssuesFound++
+            "TFS $($TfsWorkItem.Id) has out of date comments"
+            $TfsWorkItem.Open()
+            $TfsWorkItem["$CommentsField"] = $ExpectedComments
             $TfsChanges += $TfsWorkItem
         }
     }
