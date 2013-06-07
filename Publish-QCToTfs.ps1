@@ -15,6 +15,12 @@ $DescriptionField = "Microsoft.VSTS.TCM.ReproSteps"
 $CommentsField = "Microsoft.VSTS.Common.AcceptanceCriteria"
 $SystemInfoField = "Microsoft.VSTS.TCM.SystemInfo"
 
+$Prefix = ''
+if (-not [string]::IsNullOrWhiteSpace($QCPrefix)) {
+    $Prefix = "$($QCPrefix) "
+}
+$Prefix += 'QC'
+
 function Import-Excel($path, $sheetName)
 {
     Write-Verbose "Reading $sheetName from Excel sheet $path"
@@ -59,15 +65,11 @@ function New-BugInTfs($WorkItemType, $QCDefect)
 
 function Format-TfsWorkItemTitle($QCDefect)
 {
-    $Prefix = ''
-    if (-not [string]::IsNullOrWhiteSpace($QCPrefix)) {
-        $Prefix = "$($QCPrefix) "
-    }
     $QCTitle = $QCDefect.Summary
     if ($QCTitle.Length -gt 150) {
         $QCTitle = "$($QCTitle.Substring(0, 149))…"
     }
-    "$($Prefix)QC $($QCDefect["Defect ID"]) - $($QCTitle)"
+    "$Prefix $($QCDefect["Defect ID"]) - $($QCTitle)"
 }
 
 function Format-TfsWorkItemTextAsHtml($Text)
@@ -109,7 +111,7 @@ $TfsWorkItemsQueryText = "
     FROM WorkItems
     WHERE [Team Project] = '$ProjectName'
     AND [Work Item Type] = 'Bug'
-    AND Title contains 'QC'"
+    AND Title contains '$Prefix'"
 $TfsWorkItemsCount = $WorkItemStore.QueryCount($TfsWorkItemsQueryText)
 Write-Verbose "$TfsWorkItemsCount QC-related work items found in TFS"
 
