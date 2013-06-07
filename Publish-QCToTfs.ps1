@@ -5,6 +5,7 @@ param (
     [parameter(Mandatory=$true)] [string]$QCExportPath,
     [parameter(Mandatory=$true)] $IterationMapping,
     [string] $QCPrefix,
+    [string] $NewBugAreaPath,
     [switch] $Fix = $false
 )
 
@@ -35,6 +36,9 @@ function New-BugInTfs($WorkItemType, $QCDefect)
     $WorkItem = New-Object Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem $WorkItemType
     $WorkItem["Title"] = Format-TfsWorkItemTitle $QCDefect
     $WorkItem["Severity"] = $DefectToTfsSeverity[$QCDefect.Severity]
+    if ($NewBugAreaPath -ne $null) {
+        $WorkItem["Area Path"] = $NewBugAreaPath
+    }
     if ($IterationMapping[$QCDefect["Detected in Release"]] -ne $null) {
         $WorkItem["Iteration Path"] = $IterationMapping[$QCDefect["Detected in Release"]]
     } else {
