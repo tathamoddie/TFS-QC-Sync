@@ -369,6 +369,7 @@ if ($Fix -eq $true) {
     if ($SaveErrors.Length -ne 0) {
         Write-Error "$($SaveErrors.Length) work items failed to publish to TFS" -ErrorAction Continue
     }
+    $SaveErrors | %{ Write-Error "$($_.WorkItem.Id) failed to publish to TFS - $($_.Exception)" }
 }
 else {
     "Skipping $($TfsChanges.Length) changes to TFS because -Fix switch was not supplied"
